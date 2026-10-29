@@ -26,6 +26,16 @@ Re-engineered directly from analysis of the Fortzone Playbook application archit
   - Automated loop injection mechanism with configurable millisecond delay.
   - Built-in token normalizer with base64/URL encoding handling.
 
+## Deployment to Cloudflare Pages (Recommended)
+
+1. Collega il repository GitHub su **Cloudflare Dashboard** > **Workers & Pages** > **Create application** > **Pages** > **Connect to Git**.
+2. Impostazioni di Build:
+   - **Framework preset**: `None`
+   - **Build command**: *(lascia vuoto)*
+   - **Build output directory**: `/` (o root)
+3. Clicca **Save and Deploy**.
+4. Il proxy Edge integrato in `functions/proxy.js` verrà distribuito automaticamente su Cloudflare, bypassando qualsiasi blocco CORS del browser verso i server di gioco con zero configurazioni manuali.
+
 ## Deployment to GitHub Pages
 
 1. Create a repository on GitHub (e.g. `fortzone-modifier`).
