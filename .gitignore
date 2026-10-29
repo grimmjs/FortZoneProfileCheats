@@ -1,0 +1,6 @@
+.gemini/
+*.log
+__pycache__/
+.env
+prompt.txt
+that.txt
