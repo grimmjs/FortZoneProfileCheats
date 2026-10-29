@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fortzone Toolkit & Modifier</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #05070d;
+      color: #f8fafc;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .scanline {
+      background: repeating-linear-gradient(0deg, rgba(16, 185, 129, 0.05) 0px, rgba(16, 185, 129, 0.05) 1px, transparent 1px, transparent 4px);
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .pulse-glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+    }
+    .pulse-glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+    }
+    .pulse-glow-fuchsia {
+      box-shadow: 0 0 25px rgba(217, 70, 239, 0.35);
+    }
+    .pulse-glow-amber {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+    }
+  </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+
+  <!-- Ambient Background Gradients -->
+  <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px]"></div>
+    <div class="absolute top-1/3 -right-40 w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[140px]"></div>
+    <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]"></div>
+  </div>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-6">
+    
+    <!-- Top Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+      <div class="space-y-1">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold tracking-wider uppercase">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          <span>v3.0 PRO · OPERATOR SUITE</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          FORTZONE MODIFIER
+        </h1>
+        <p class="text-xs text-slate-400">
+          Match editor, automated XP/currency farming, rating regulator, wings & character manager.
+        </p>
+      </div>
+
+      <!-- Settings / Proxy Button -->
+      <div class="flex items-center gap-3">
+        <button id="btnOpenConfig" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-slate-300 font-medium transition">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span>API / Proxy Config</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="grid grid-cols-2 md:grid-cols-5 gap-2 p-1.5 rounded-2xl bg-[#0a1020]/80 border border-white/10 backdrop-blur-md shadow-xl">
+      <button class="nav-tab active flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_20px_rgba(0,212,255,0.4)]" data-tab="lvl">
+        <i data-lucide="coins" class="w-4 h-4"></i>
+        <span>LVL / Coins</span>
+      </button>
+      <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="rating">
+        <i data-lucide="flame" class="w-4 h-4"></i>
+        <span>Rating / KD</span>
+      </button>
+      <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="wings">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span>Wings</span>
+      </button>
+      <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="chars">
+        <i data-lucide="users" class="w-4 h-4"></i>
+        <span>Characters</span>
+      </button>
+      <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="nick">
+        <i data-lucide="terminal" class="w-4 h-4"></i>
+        <span>Nick Changer</span>
+      </button>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: LVL / COINS / CRYSTALS              -->
+    <!-- ========================================== -->
+    <section id="tab-lvl" class="tab-content block">
+      <div class="rounded-2xl border bg-gradient-to-b from-cyan-500/20 to-blue-600/5 border-cyan-400/20 backdrop-blur-md p-1 shadow-2xl">
+        <div class="rounded-[15px] bg-[#0a1020]/90 p-5 md:p-7 space-y-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="coins" class="w-5 h-5 text-cyan-400"></i>
+                Get LVL / Crystal / Coins
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">
+                Inject battle completion packets into an existing match ID to farm EXP, Soft Currency (Coins) & Hard Currency (Gems).
+              </p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">
+              Pro Farm
+            </span>
+          </div>
+
+          <form id="formLvl" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🆔 Battle ID</label>
+              <input type="text" id="lvlBattleId" required placeholder="Example: 47712702" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
+              <input type="password" id="lvlToken" required placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔁 Repeat Count</label>
+              <input type="number" id="lvlRepeat" min="1" max="500" value="50" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20">
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button type="submit" id="lvlBtnSubmit" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 shadow-[0_0_25px_rgba(0,212,255,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span id="lvlBtnText">Execute Farming</span>
+              </button>
+              <button type="button" id="lvlBtnStop" class="hidden px-5 py-3.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-500 transition">
+                Stop
+              </button>
+            </div>
+          </form>
+
+          <!-- Share Link / Status -->
+          <div class="flex gap-2 items-center bg-[#0f172a]/60 border border-white/5 rounded-lg p-2">
+            <input type="text" id="lvlShareLink" readonly placeholder="Fill data to generate share link" class="flex-1 px-2 py-1 bg-transparent text-xs text-slate-400 outline-none truncate">
+            <button id="lvlBtnCopyShare" class="px-3 py-1.5 text-xs rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300">
+              📋 Copy
+            </button>
+          </div>
+
+          <!-- Console log output -->
+          <div class="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 border-b border-white/5 pb-2">
+              <span class="font-mono">Live Terminal Output</span>
+              <span id="lvlStatus" class="text-cyan-400 font-semibold">Ready</span>
+            </div>
+            <div id="lvlConsole" class="h-44 overflow-y-auto font-mono text-xs text-slate-300 space-y-1 p-1">
+              <div class="text-slate-500">[System] Initialized. Ready for battle ID and token.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: RATING / KD                         -->
+    <!-- ========================================== -->
+    <section id="tab-rating" class="tab-content hidden">
+      <div class="rounded-2xl border bg-gradient-to-b from-amber-500/20 to-orange-600/5 border-amber-400/20 backdrop-blur-md p-1 shadow-2xl">
+        <div class="rounded-[15px] bg-[#0a1020]/90 p-5 md:p-7 space-y-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="flame" class="w-5 h-5 text-amber-400"></i>
+                Rating / KD — Wins & Defeats
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">
+                Auto-create battles and finish them as Victory or Defeat to regulate KD, rating points & match logs.
+              </p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-400/30">
+              KD Engine
+            </span>
+          </div>
+
+          <form id="formRating" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
+              <input type="password" id="ratingToken" required placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🔁 Repeat Count</label>
+                <input type="number" id="ratingRepeat" min="1" max="100" value="1" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🏷️ Result Type</label>
+                <select id="ratingResultType" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
+                  <option value="2">Victory (2)</option>
+                  <option value="0">Victory alt (0)</option>
+                  <option value="1">Defeat (1)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🎮 Battle Mode</label>
+                <select id="ratingBattleMode" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
+                  <option value="17">17 — Ranked</option>
+                  <option value="15">15 — Normal</option>
+                  <option value="18">18 — Competitive</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button type="submit" id="ratingBtnSubmit" class="flex-1 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-95 shadow-[0_0_25px_rgba(245,158,11,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span id="ratingBtnText">Run Rating Simulation</span>
+              </button>
+              <button type="button" id="ratingBtnStop" class="hidden px-5 py-3.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-500 transition">
+                Stop
+              </button>
+            </div>
+          </form>
+
+          <!-- KD Stats Summary Box -->
+          <div id="ratingStatsBox" class="hidden grid grid-cols-3 md:grid-cols-6 gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Battles</div>
+              <div id="statTotal" class="text-sm font-bold text-white">0</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Wins</div>
+              <div id="statWins" class="text-sm font-bold text-emerald-400">0</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Losses</div>
+              <div id="statLosses" class="text-sm font-bold text-rose-400">0</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Coins</div>
+              <div id="statCoins" class="text-sm font-bold text-amber-300">+0</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Gems</div>
+              <div id="statGems" class="text-sm font-bold text-cyan-300">+0</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase">Rating</div>
+              <div id="statRating" class="text-sm font-bold text-yellow-400">+0</div>
+            </div>
+          </div>
+
+          <!-- Console log output -->
+          <div class="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 border-b border-white/5 pb-2">
+              <span class="font-mono">Live Session Log</span>
+              <span id="ratingStatus" class="text-amber-400 font-semibold">Ready</span>
+            </div>
+            <div id="ratingConsole" class="h-44 overflow-y-auto font-mono text-xs text-slate-300 space-y-1 p-1">
+              <div class="text-slate-500">[System] Ready for KD/Rating manipulation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: PREMIUM WINGS                       -->
+    <!-- ========================================== -->
+    <section id="tab-wings" class="tab-content hidden">
+      <div class="rounded-2xl border bg-gradient-to-b from-fuchsia-500/20 to-purple-600/5 border-fuchsia-400/20 backdrop-blur-md p-1 shadow-2xl">
+        <div class="rounded-[15px] bg-[#0a1020]/90 p-5 md:p-7 space-y-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-5 h-5 text-fuchsia-400"></i>
+                Premium Wings — Buy & Equip
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">
+                Unlock Ice & Fire wings (IDs 12–31) and equip them directly to your account.
+              </p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-400/30">
+              Cosmetic Pack
+            </span>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
+              <input type="password" id="wingsToken" placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-400/20">
+            </div>
+
+            <!-- Wing Selector Grid -->
+            <div>
+              <div class="text-xs font-medium text-slate-400 mb-2">🪽 Select Wing</div>
+              <div id="wingsGrid" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Selected Wing Preview -->
+            <div class="rounded-xl border border-white/10 bg-[#0f172a]/60 p-4 text-center">
+              <div id="wingPreviewEmoji" class="text-4xl">❄️</div>
+              <div id="wingPreviewName" class="text-sm font-bold text-slate-200 mt-1">ICE WINGS 12</div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button id="btnBuyEquipSingleWing" class="py-3 rounded-lg font-bold text-white bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:opacity-95 shadow-[0_0_25px_rgba(217,70,239,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="rocket" class="w-4 h-4"></i>
+                <span>Buy & Equip Selected</span>
+              </button>
+              <button id="btnBuyAllWings" class="py-3 rounded-lg font-bold text-white bg-gradient-to-r from-indigo-500 to-fuchsia-600 hover:opacity-95 shadow-[0_0_25px_rgba(129,140,248,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="gem" class="w-4 h-4"></i>
+                <span>Buy ALL Wings (12–31)</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button id="btnBuyAllIceWings" class="py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 transition">
+                ❄️ Buy all ICE (12–20)
+              </button>
+              <button id="btnBuyAllFireWings" class="py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-95 transition">
+                🔥 Buy all FIRE (21–31)
+              </button>
+            </div>
+
+            <!-- Console log output -->
+            <div class="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2">
+              <div class="flex items-center justify-between text-xs text-slate-400 border-b border-white/5 pb-2">
+                <span class="font-mono">Wings Output</span>
+                <span id="wingsStatus" class="text-fuchsia-400 font-semibold">Ready</span>
+              </div>
+              <div id="wingsConsole" class="h-40 overflow-y-auto font-mono text-xs text-slate-300 space-y-1 p-1">
+                <div class="text-slate-500">[System] Select wing and enter token.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: CHARACTERS STORE                    -->
+    <!-- ========================================== -->
+    <section id="tab-chars" class="tab-content hidden">
+      <div class="rounded-2xl border bg-gradient-to-b from-purple-500/20 to-pink-600/5 border-purple-400/20 backdrop-blur-md p-1 shadow-2xl">
+        <div class="rounded-[15px] bg-[#07091a]/95 p-5 md:p-7 space-y-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-fuchsia-500/20 to-amber-400/20 border border-fuchsia-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider mb-2">
+                <i data-lucide="crown" class="w-3.5 h-3.5"></i>
+                <span>Premium Collection</span>
+              </div>
+              <h2 class="text-xl md:text-2xl font-black bg-gradient-to-r from-amber-300 via-fuchsia-400 to-cyan-300 bg-clip-text text-transparent">
+                Premium Characters Store
+              </h2>
+              <p class="text-xs text-slate-400 max-w-md mt-1">
+                Unlock legendary heroes. Click to select heroes and purchase them into your inventory.
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
+              <input type="password" id="charsToken" placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20">
+            </div>
+
+            <!-- Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button id="btnBuySelectedChars" class="py-2.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-[0_0_20px_rgba(236,72,153,0.45)] hover:opacity-95 transition">
+                🛒 Buy Selected (<span id="charsSelectedCount">0</span>)
+              </button>
+              <button id="btnBuyAllChars" class="py-2.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 shadow-[0_0_20px_rgba(251,146,60,0.5)] hover:opacity-95 transition">
+                ⚡ Buy All Characters
+              </button>
+              <button id="btnStopChars" disabled class="py-2.5 rounded-lg text-xs font-bold text-white bg-red-600/80 hover:bg-red-500 disabled:opacity-30 transition">
+                ⏹ Stop
+              </button>
+            </div>
+
+            <!-- Characters Grid -->
+            <div id="charsGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <!-- Dynamically populated -->
+            </div>
+
+            <!-- Console log output -->
+            <div class="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2">
+              <div class="flex items-center justify-between text-xs text-slate-400 border-b border-white/5 pb-2">
+                <span class="font-mono">Store Response Log</span>
+                <span id="charsStatus" class="text-purple-400 font-semibold">Ready</span>
+              </div>
+              <div id="charsConsole" class="h-36 overflow-y-auto font-mono text-xs text-slate-300 space-y-1 p-1">
+                <div class="text-slate-500">[System] Ready to purchase characters.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: NICKNAME CHANGER (CYBERPUNK)       -->
+    <!-- ========================================== -->
+    <section id="tab-nick" class="tab-content hidden">
+      <div class="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-emerald-400 via-lime-500 to-emerald-700 shadow-[0_0_40px_rgba(16,185,129,0.35)]">
+        <div class="relative overflow-hidden rounded-[15px] bg-[#020805] p-5 md:p-7 space-y-5 font-mono">
+          <div class="pointer-events-none absolute inset-0 opacity-[0.07] scanline"></div>
+
+          <div class="relative flex items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 text-emerald-400 text-xs tracking-[0.3em]">
+                <i data-lucide="terminal" class="w-4 h-4"></i>
+                <span>ACCESS_GRANTED</span>
+              </div>
+              <h2 class="mt-1 text-2xl md:text-3xl font-black text-emerald-300 drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]">
+                NICKNAME<span class="text-lime-300">_</span>CHANGER<span class="animate-pulse">█</span>
+              </h2>
+              <p class="text-[11px] text-emerald-600 mt-1">
+                // override your in-game name instantly
+              </p>
+            </div>
+            <div id="nickRunningBadge" class="px-3 py-1 rounded border text-[10px] tracking-widest border-emerald-800 text-emerald-700">
+              ○ IDLE
+            </div>
+          </div>
+
+          <form id="formNick" class="space-y-4">
+            <div>
+              <label class="block text-[11px] text-emerald-400 mb-1">$ token --encoded|--decoded</label>
+              <input type="text" id="nickToken" required placeholder="Paste token here..." class="w-full px-4 py-2.5 rounded-lg bg-black border border-emerald-500/40 text-emerald-300 font-mono text-xs focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] text-emerald-400 mb-1">$ nick --new</label>
+                <input type="text" id="nickNewName" required maxlength="24" placeholder="Enter new nickname" class="w-full px-4 py-2.5 rounded-lg bg-black border border-emerald-500/40 text-emerald-300 font-mono text-xs focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400">
+              </div>
+              <div>
+                <label class="block text-[11px] text-emerald-400 mb-1">$ delay --ms</label>
+                <input type="number" id="nickDelay" min="100" max="5000" value="300" class="w-full px-4 py-2.5 rounded-lg bg-black border border-emerald-500/40 text-emerald-300 font-mono text-xs focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400">
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button type="submit" id="nickBtnStart" class="flex-1 py-3 rounded-xl font-black text-black bg-gradient-to-r from-emerald-400 to-lime-400 hover:opacity-95 shadow-[0_0_25px_rgba(16,185,129,0.7)] transition flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span>EXECUTE INJECTION</span>
+              </button>
+              <button type="button" id="nickBtnStop" class="hidden px-6 py-3 rounded-xl font-black text-white bg-red-600 hover:bg-red-500 transition">
+                ABORT
+              </button>
+              <button type="button" id="btnOpenNickHelp" class="px-3 py-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 text-xs font-bold transition">
+                READ ME
+              </button>
+            </div>
+          </form>
+
+          <!-- Terminal stats bar -->
+          <div class="flex items-center justify-between text-xs px-3 py-2 rounded bg-black/80 border border-emerald-500/20 text-emerald-400">
+            <span>OK: <strong id="nickStatOk" class="text-emerald-300">0</strong></span>
+            <span>FAIL: <strong id="nickStatFail" class="text-rose-400">0</strong></span>
+            <span>TOTAL: <strong id="nickStatTotal" class="text-lime-300">0</strong></span>
+          </div>
+
+          <!-- Terminal Output -->
+          <div class="rounded-xl border border-emerald-500/30 bg-black/90 p-3 space-y-1">
+            <div class="flex items-center justify-between text-[11px] text-emerald-500 border-b border-emerald-500/20 pb-1.5">
+              <span>root@modifier:~$ output.log</span>
+              <button id="btnClearNickLog" class="text-[10px] text-emerald-600 hover:text-emerald-400">clear</button>
+            </div>
+            <div id="nickConsole" class="h-48 overflow-y-auto text-[11px] space-y-1 p-1">
+              <div class="text-emerald-600">[System] nick-changer core online.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+      <div>
+        <span>Fortzone Match Operator Suite</span> · <span>Self-Contained Client</span>
+      </div>
+      <div>
+        <span>Built for low-latency testing & game instrumentation</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: NICKNAME CHANGER INSTRUCTIONS       -->
+  <!-- ========================================== -->
+  <div id="modalNickHelp" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-mono">
+    <div class="relative w-full max-w-md rounded-2xl p-[1.5px] bg-gradient-to-br from-emerald-400 via-lime-400 to-emerald-700 shadow-[0_0_50px_rgba(16,185,129,0.45)]">
+      <div class="relative overflow-hidden rounded-[15px] bg-[#020805] p-5 space-y-4">
+        <div class="text-[10px] tracking-[0.3em] text-emerald-500">// HOW IT WORKS</div>
+        <h3 class="text-xl font-black text-emerald-300">How to change your nickname</h3>
+        <ol class="space-y-3 text-xs text-slate-300">
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">01</span>
+            <div><strong>Prepare:</strong> Copy your token from the browser game network request, paste it here and type your desired name.</div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">02</span>
+            <div><strong>Refresh:</strong> Refresh the Fortzone game tab.</div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">03</span>
+            <div><strong>Execute:</strong> Click <em>EXECUTE INJECTION</em> in this tool.</div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">04</span>
+            <div><strong>Open game:</strong> Switch back to the game tab and let it load — your injected name will appear.</div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">05</span>
+            <div><strong>Stop:</strong> Return here and click <em>ABORT</em> once the name has locked in.</div>
+          </li>
+        </ol>
+        <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/20 text-[11px] text-emerald-400">
+          💡 <strong>Reset original name:</strong> Refresh the game page WITHOUT pressing EXECUTE.
+        </div>
+        <button id="btnCloseNickHelp" class="w-full py-2.5 rounded-lg bg-emerald-500 text-black font-bold text-xs uppercase tracking-wider hover:bg-emerald-400 transition">
+          OK, GOT IT
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: API & CORS PROXY CONFIG             -->
+  <!-- ========================================== -->
+  <div id="modalConfig" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+    <div class="relative w-full max-w-lg rounded-2xl p-[1px] bg-gradient-to-br from-cyan-400 to-blue-600 shadow-2xl">
+      <div class="rounded-[15px] bg-[#0a1020] p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="settings" class="w-4 h-4 text-cyan-400"></i>
+            API & Endpoint Configuration
+          </h3>
+          <button id="btnCloseConfig" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+
+        <p class="text-xs text-slate-400">
+          Configure backend endpoints or use a CORS proxy to bypass browser restrictions when running from standard hosting.
+        </p>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-400 mb-1">CORS Proxy (Optional — leave empty for direct calls)</label>
+            <input type="text" id="cfgProxy" placeholder="e.g. https://corsproxy.io/?" class="w-full px-3 py-2 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-cyan-400">
+            <p class="text-[10px] text-slate-500 mt-1">If the browser blocks calls due to CORS, setting a proxy prepends this URL to API calls.</p>
+          </div>
+
+          <div>
+            <label class="block text-slate-400 mb-1">Battle API Base URL</label>
+            <input type="text" id="cfgBattleApi" value="https://protondev.xyz:8511" class="w-full px-3 py-2 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-cyan-400">
+          </div>
+
+          <div>
+            <label class="block text-slate-400 mb-1">Nick API Base URL</label>
+            <input type="text" id="cfgNickApi" value="https://fahrenheit-dev.com/fz3/Nicks/ChangeNick" class="w-full px-3 py-2 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-cyan-400">
+          </div>
+
+          <div>
+            <label class="block text-slate-400 mb-1">Origin Header</label>
+            <input type="text" id="cfgOrigin" value="https://fortzone-battle-royale-xkd.game-files.crazygames.com" class="w-full px-3 py-2 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-cyan-400">
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button id="btnSaveConfig" class="flex-1 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition">
+            Save Configuration
+          </button>
+          <button id="btnResetConfig" class="px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs transition">
+            Reset Defaults
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
