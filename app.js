@@ -28,6 +28,11 @@ function loadConfig() {
     } catch (e) {
       console.error('Failed to parse saved config:', e);
     }
+  } else {
+    // If running on Cloudflare Pages or relative proxy exists, use native edge proxy
+    if (typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.protocol.startsWith('http'))) {
+      CONFIG.proxyUrl = '/proxy?url=';
+    }
   }
 }
 
