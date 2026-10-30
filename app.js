@@ -176,7 +176,7 @@ function appendLog(containerId, message, type = 'info') {
 // ==========================================
 let lvlAborted = false;
 
-async function executeLvlFarming(battleId, token, repeat) {
+async function executeLvlFarming(battleId, token, repeat, targetExp = 0, targetCoins = 0, targetGems = 0) {
   const btnSubmit = document.getElementById('lvlBtnSubmit');
   const btnStop = document.getElementById('lvlBtnStop');
   const statusEl = document.getElementById('lvlStatus');
@@ -186,7 +186,12 @@ async function executeLvlFarming(battleId, token, repeat) {
   btnSubmit.disabled = true;
   btnStop.classList.remove('hidden');
   statusEl.textContent = 'Running...';
-  appendLog('lvlConsole', `🚀 Starting farm job: Battle ${battleId}, Repeat ${repeat}`, 'cyan');
+  appendLog('lvlConsole', `🚀 Starting farm job: Battle ${battleId}, Max Matches: ${repeat}`, 'cyan');
+
+  const hasTargets = targetExp > 0 || targetCoins > 0 || targetGems > 0;
+  if (hasTargets) {
+    appendLog('lvlConsole', `🎯 Active Targets: EXP: ${targetExp || '∞'} · Coins: ${targetCoins || '∞'} · Gems: ${targetGems || '∞'}`, 'cyan');
+  }
 
   const normalizedToken = formatToken(token);
   const finishPayload = `data=${encodeURIComponent(JSON.stringify({
@@ -230,7 +235,14 @@ async function executeLvlFarming(battleId, token, repeat) {
         totalExp += exp;
         totalCoins += coins;
         totalGems += gems;
-        appendLog('lvlConsole', `[${i}/${repeat}] ✅ Success · EXP +${exp} · Coins +${coins} · Gems +${gems}`, 'success');
+        appendLog('lvlConsole', `[${i}/${repeat}] ✅ +${exp} EXP (Tot: ${totalExp}) · +${coins} Coins (Tot: ${totalCoins}) · +${gems} Gems (Tot: ${totalGems})`, 'success');
+
+        if ((targetExp > 0 && totalExp >= targetExp) ||
+            (targetCoins > 0 && totalCoins >= targetCoins) ||
+            (targetGems > 0 && totalGems >= targetGems)) {
+          appendLog('lvlConsole', `🎯 Target Reached! Total Farmed: +${totalExp} EXP, +${totalCoins} Coins, +${totalGems} Gems`, 'cyan');
+          break;
+        }
       } else {
         appendLog('lvlConsole', `[${i}/${repeat}] ❌ Failed (Code: ${data.error ?? 'Unknown'})`, 'error');
       }
@@ -669,7 +681,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const bId = document.getElementById('lvlBattleId').value.trim();
     const token = document.getElementById('lvlToken').value.trim();
     const rep = parseInt(document.getElementById('lvlRepeat').value) || 50;
-    executeLvlFarming(bId, token, rep);
+    const targetExp = parseInt(document.getElementById('lvlTargetExp')?.value) || 0;
+    const targetCoins = parseInt(document.getElementById('lvlTargetCoins')?.value) || 0;
+    const targetGems = parseInt(document.getElementById('lvlTargetGems')?.value) || 0;
+    executeLvlFarming(bId, token, rep, targetExp, targetCoins, targetGems);
   });
   document.getElementById('lvlBtnStop').addEventListener('click', () => {
     lvlAborted = true;
