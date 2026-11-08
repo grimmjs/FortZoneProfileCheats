@@ -51,11 +51,17 @@ function formatToken(token) {
   try {
     clean = decodeURIComponent(clean);
   } catch (e) {}
-  if (!/^[A-Za-z0-9+/]+=*$/.test(clean) || clean.length % 4 !== 0) {
-    try {
-      clean = btoa(clean);
-    } catch (e) {}
+
+  // If already a JWT (starts with eyJ or has 3 dot-separated segments), keep intact
+  if (clean.startsWith('eyJ') || clean.split('.').length === 3) {
+    return clean;
   }
+
+  // If already valid base64
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(clean) && clean.length % 4 === 0) {
+    return clean;
+  }
+
   return clean;
 }
 
@@ -726,8 +732,18 @@ async function inspectMyClan(token) {
   try {
     const resp = await fetchEndpoint(`${clanBase}/Clans/GetMyClan`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${normalizedToken}`,
+        'token': normalizedToken
+      },
       body: `VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
+
+    if (resp.status === 401) {
+      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido. Fai un match o ricarica il gioco per prenderne uno fresco.', 'error');
+      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
+      return;
+    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -811,8 +827,18 @@ async function probeClanSetRole(token, targetUserId, targetRole) {
   try {
     const resp = await fetchEndpoint(`${clanBase}/Clans/SetRole`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${normalizedToken}`,
+        'token': normalizedToken
+      },
       body: finishPayload
     });
+
+    if (resp.status === 401) {
+      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
+      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
+      return;
+    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -863,8 +889,18 @@ async function probeClanKick(token, targetUserId) {
   try {
     const resp = await fetchEndpoint(`${clanBase}/Clans/Kick`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${normalizedToken}`,
+        'token': normalizedToken
+      },
       body: `targetUserId=${encodeURIComponent(targetUserId)}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
+
+    if (resp.status === 401) {
+      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
+      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
+      return;
+    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -917,8 +953,18 @@ async function probeClanUpdate(token) {
   try {
     const resp = await fetchEndpoint(`${clanBase}/Clans/Update`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${normalizedToken}`,
+        'token': normalizedToken
+      },
       body: `data=${encodeURIComponent(JSON.stringify(updateBody))}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
     });
+
+    if (resp.status === 401) {
+      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
+      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
+      return;
+    }
 
     const text = (await resp.text()).trim();
     if (!text) {
