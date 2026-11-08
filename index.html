@@ -85,7 +85,7 @@
     </header>
 
     <!-- Navigation Tabs -->
-    <nav class="grid grid-cols-2 md:grid-cols-5 gap-2 p-1.5 rounded-2xl bg-[#0a1020]/80 border border-white/10 backdrop-blur-md shadow-xl">
+    <nav class="grid grid-cols-2 md:grid-cols-6 gap-2 p-1.5 rounded-2xl bg-[#0a1020]/80 border border-white/10 backdrop-blur-md shadow-xl">
       <button class="nav-tab active flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_20px_rgba(0,212,255,0.4)]" data-tab="lvl">
         <i data-lucide="coins" class="w-4 h-4"></i>
         <span>LVL / Coins</span>
@@ -105,6 +105,10 @@
       <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="nick">
         <i data-lucide="terminal" class="w-4 h-4"></i>
         <span>Nick Changer</span>
+      </button>
+      <button class="nav-tab flex flex-col md:flex-row items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-white/5" data-tab="clan">
+        <i data-lucide="shield" class="w-4 h-4"></i>
+        <span>Club / Clan</span>
       </button>
     </nav>
 
@@ -524,6 +528,110 @@
             </div>
             <div id="nickConsole" class="h-48 overflow-y-auto text-[11px] space-y-1 p-1">
               <div class="text-emerald-600">[System] nick-changer core online.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: CLUB / CLAN PRIVILEGE TESTER        -->
+    <!-- ========================================== -->
+    <section id="tab-clan" class="tab-content hidden">
+      <div class="rounded-2xl border bg-gradient-to-b from-indigo-500/20 to-purple-600/5 border-indigo-400/20 backdrop-blur-md p-1 shadow-2xl">
+        <div class="rounded-[15px] bg-[#080d1e]/90 p-5 md:p-7 space-y-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="shield" class="w-5 h-5 text-indigo-400"></i>
+                Club / Clan — Privilege & Admin Tester
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">
+                Inspect clan data, probe IDOR role elevation (/Clans/SetRole), test kick authorization, and verify BAC server-side checks.
+              </p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider bg-indigo-500/10 text-indigo-300 border border-indigo-400/30">
+              Clan Engine
+            </span>
+          </div>
+
+          <form id="formClan" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
+              <input type="password" id="clanToken" required placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🎯 Target User ID (Leave blank for own User ID)</label>
+                <input type="number" id="clanTargetUserId" placeholder="e.g. 39470 or another member ID" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">👑 Target Role</label>
+                <select id="clanTargetRole" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-indigo-400">
+                  <option value="0">0 — Creator (Club Owner / Leader)</option>
+                  <option value="1">1 — Deputy (Admin / Co-leader)</option>
+                  <option value="2">2 — Member (Standard Member)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+              <button type="button" id="btnClanGetInfo" class="py-3 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 shadow-[0_0_20px_rgba(79,70,229,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <span>1. Inspect Clan</span>
+              </button>
+              <button type="button" id="btnClanSetRole" class="py-3 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 shadow-[0_0_20px_rgba(147,51,234,0.4)] transition flex items-center justify-center gap-2">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+                <span>2. Probe SetRole</span>
+              </button>
+              <button type="button" id="btnClanKick" class="py-3 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:opacity-95 transition flex items-center justify-center gap-2">
+                <i data-lucide="user-x" class="w-4 h-4"></i>
+                <span>3. Probe Kick</span>
+              </button>
+              <button type="button" id="btnClanUpdate" class="py-3 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 transition flex items-center justify-center gap-2">
+                <i data-lucide="edit" class="w-4 h-4"></i>
+                <span>4. Probe Update</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Clan Info Card -->
+          <div id="clanInfoCard" class="hidden rounded-xl bg-indigo-500/10 border border-indigo-500/20 p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs text-indigo-300 font-semibold border-b border-indigo-500/20 pb-2">
+              <span id="clanCardName">Clan Name</span>
+              <span id="clanCardId" class="text-slate-400">ID: -</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div>
+                <span class="text-slate-500 block text-[10px]">OWNER ID:</span>
+                <span id="clanCardOwner" class="font-bold text-white">-</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">MEMBERS:</span>
+                <span id="clanCardMembersCount" class="font-bold text-emerald-400">-</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">YOUR ROLE:</span>
+                <span id="clanCardMyRole" class="font-bold text-amber-300">-</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">MIN LEVEL:</span>
+                <span id="clanCardMinLevel" class="font-bold text-white">-</span>
+              </div>
+            </div>
+            <div id="clanMembersList" class="max-h-36 overflow-y-auto space-y-1 pt-1 text-[11px] font-mono text-slate-300">
+            </div>
+          </div>
+
+          <!-- Console log output -->
+          <div class="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 border-b border-white/5 pb-2">
+              <span class="font-mono">Clan API Live Session Log</span>
+              <span id="clanStatus" class="text-indigo-400 font-semibold">Ready</span>
+            </div>
+            <div id="clanConsole" class="h-44 overflow-y-auto font-mono text-xs text-slate-300 space-y-1 p-1">
+              <div class="text-slate-500">[System] Ready to probe /Clans endpoints.</div>
             </div>
           </div>
         </div>
