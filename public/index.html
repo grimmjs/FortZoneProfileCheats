@@ -227,7 +227,7 @@
               <input type="password" id="ratingToken" required placeholder="Paste your Fortzone token" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20">
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label class="block text-xs font-medium text-slate-400 mb-1.5">🔁 Repeat Count</label>
                 <input type="number" id="ratingRepeat" min="1" max="100" value="1" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
@@ -235,17 +235,29 @@
               <div>
                 <label class="block text-xs font-medium text-slate-400 mb-1.5">🏷️ Result Type</label>
                 <select id="ratingResultType" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
-                  <option value="2">Victory (2)</option>
-                  <option value="0">Victory alt (0)</option>
-                  <option value="1">Defeat (1)</option>
+                  <option value="2">🏆 Victory (Win - 2)</option>
+                  <option value="3">💀 Defeat (Lose - 3)</option>
+                  <option value="1">🤝 Draw (1)</option>
+                  <option value="0">🏆 Victory alt (0)</option>
                 </select>
               </div>
               <div>
                 <label class="block text-xs font-medium text-slate-400 mb-1.5">🎮 Battle Mode</label>
                 <select id="ratingBattleMode" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
-                  <option value="17">17 — Ranked</option>
-                  <option value="15">15 — Normal</option>
-                  <option value="18">18 — Competitive</option>
+                  <option value="15">👥 Squad (15 — Team Battle Royale)</option>
+                  <option value="18">⚔️ 1v1 Ranked (18 — Duel Battle Royale)</option>
+                  <option value="17">🎯 Solo Ranked (17 — Single Battle Royale)</option>
+                  <option value="20">👥 2v2 Duos (20 — Double Duel BR)</option>
+                  <option value="6">💥 Team Classic (6 — TDM)</option>
+                  <option value="5">⚡ Mayhem (5)</option>
+                  <option value="16">🌀 Maze Survival (16)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">🏆 Match Queue</label>
+                <select id="ratingIsRanked" class="w-full px-4 py-3 rounded-lg bg-[#0f172a] border border-white/10 text-white focus:outline-none focus:border-amber-400">
+                  <option value="True">Ranked (isRating = True)</option>
+                  <option value="False">Casual / Unranked (False)</option>
                 </select>
               </div>
             </div>

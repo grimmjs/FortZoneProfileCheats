@@ -265,7 +265,7 @@ async function executeLvlFarming(battleId, token, repeat, targetExp = 0, targetC
 // ==========================================
 let ratingAborted = false;
 
-async function executeRatingSimulation(token, repeat, resultType, battleMode) {
+async function executeRatingSimulation(token, repeat, resultType, battleMode, isRating = 'True') {
   const btnSubmit = document.getElementById('ratingBtnSubmit');
   const btnStop = document.getElementById('ratingBtnStop');
   const statusEl = document.getElementById('ratingStatus');
@@ -277,7 +277,19 @@ async function executeRatingSimulation(token, repeat, resultType, battleMode) {
   statusEl.textContent = 'Running...';
   statsBox.classList.remove('hidden');
 
-  appendLog('ratingConsole', `🔥 Initiating KD Engine: Mode ${battleMode}, Result ${resultType}, Repeat ${repeat}`, 'cyan');
+  const modeNames = {
+    '15': 'Squad (Team BR)',
+    '18': '1v1 Ranked (Duel BR)',
+    '17': 'Solo Ranked (Single BR)',
+    '20': '2v2 Duos (Double Duel BR)',
+    '6': 'Team Classic',
+    '5': 'Mayhem',
+    '16': 'Maze Survival'
+  };
+  const modeLabel = modeNames[battleMode] || `Mode ${battleMode}`;
+  const isWin = Number(resultType) === 2 || Number(resultType) === 0;
+
+  appendLog('ratingConsole', `🔥 Initiating KD Engine: ${modeLabel}, Result: ${isWin ? 'Victory (2)' : 'Defeat (3)'}, Ranked: ${isRating}, Repeat: ${repeat}`, 'cyan');
 
   const normalizedToken = formatToken(token);
   let totalCoins = 0;
@@ -291,13 +303,13 @@ async function executeRatingSimulation(token, repeat, resultType, battleMode) {
       break;
     }
 
-    appendLog('ratingConsole', `[${i}/${repeat}] Creating battle in mode ${battleMode}...`);
+    appendLog('ratingConsole', `[${i}/${repeat}] Creating battle in ${modeLabel} (Ranked=${isRating})...`);
 
     let battleId = null;
     try {
       const createResp = await fetchEndpoint(`${CONFIG.battleApi}/Battle/CreateBattle`, {
         method: 'POST',
-        body: `battleModeId=${battleMode}&isRating=True&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
+        body: `battleModeId=${battleMode}&isRating=${isRating}&VersId=${CONFIG.versIdBattle}&token=${encodeURIComponent(normalizedToken)}`
       });
       const createData = await createResp.json();
       if (createData.error !== 0 || !createData.value) {
@@ -311,22 +323,60 @@ async function executeRatingSimulation(token, repeat, resultType, battleMode) {
       continue;
     }
 
+    // Dynamic player counts & placing according to game mode rules
+    const modeNum = Number(battleMode);
+    let playersCount = 30;
+    let place = isWin ? 1 : 10;
+    let weaponStats = [];
+    let grenadeStats = { Damage: 0, Kills: 0, Count: 0 };
+
+    if (modeNum === 18) {
+      // 1v1 Duel Battle Royale
+      playersCount = 2;
+      place = isWin ? 1 : 2;
+      weaponStats = [
+        { WeaponId: 6, WeaponType: 6, Damage: isWin ? 650 : 120, Kills: isWin ? 1 : 0 }
+      ];
+    } else if (modeNum === 20) {
+      // 2v2 Double Duel Battle Royale
+      playersCount = 4;
+      place = isWin ? 1 : 2;
+      weaponStats = [
+        { WeaponId: 6, WeaponType: 6, Damage: isWin ? 1200 : 250, Kills: isWin ? 2 : 0 }
+      ];
+    } else if (modeNum === 15) {
+      // Squad (Team Battle Royale)
+      playersCount = 30;
+      place = isWin ? 1 : 6;
+      weaponStats = [
+        { WeaponId: 6, WeaponType: 6, Damage: isWin ? 4500 : 500, Kills: isWin ? 8 : 1 },
+        { WeaponId: 1, WeaponType: 3, Damage: isWin ? 2500 : 200, Kills: isWin ? 4 : 0 }
+      ];
+      grenadeStats = { Damage: isWin ? 800 : 0, Kills: isWin ? 2 : 0, Count: 4 };
+    } else {
+      // Solo / Others
+      playersCount = 30;
+      place = isWin ? 1 : 15;
+      weaponStats = [
+        { WeaponId: 6, WeaponType: 6, Damage: isWin ? 9999 : 500, Kills: isWin ? 20 : 1 },
+        { WeaponId: 1, WeaponType: 3, Damage: isWin ? 5000 : 0, Kills: isWin ? 10 : 0 }
+      ];
+      grenadeStats = { Damage: isWin ? 5000 : 0, Kills: isWin ? 5 : 0, Count: 10 };
+    }
+
     // Finish the battle
     const finishBody = {
       BattleId: Number(battleId),
       BattleResult: {
         Result: Number(resultType),
-        Medals: Array(15).fill(37),
-        WeaponStatistics: [
-          { WeaponId: 6, WeaponType: 6, Damage: 9999, Kills: 30 },
-          { WeaponId: 1, WeaponType: 3, Damage: 5000, Kills: 15 }
-        ],
-        GrenadeStatistics: { Damage: 5000, Kills: 20, Count: 50 },
-        PickUpWeaponCount: 15,
-        Place: 1,
-        PlayersCount: 30,
+        Medals: isWin ? Array(15).fill(37) : [],
+        WeaponStatistics: weaponStats,
+        GrenadeStatistics: grenadeStats,
+        PickUpWeaponCount: isWin ? 15 : 2,
+        Place: place,
+        PlayersCount: playersCount,
         Part: 1,
-        TotalTime: 300
+        TotalTime: 180
       }
     };
 
@@ -350,8 +400,8 @@ async function executeRatingSimulation(token, repeat, resultType, battleMode) {
 
         // Update stats UI
         document.getElementById('statTotal').textContent = rew.totalBattlesCount ?? successCount;
-        document.getElementById('statWins').textContent = rew.winBattlesCount ?? (resultType !== '1' ? successCount : 0);
-        document.getElementById('statLosses').textContent = rew.failBattlesCount ?? (resultType === '1' ? successCount : 0);
+        document.getElementById('statWins').textContent = rew.winBattlesCount ?? (isWin ? successCount : 0);
+        document.getElementById('statLosses').textContent = rew.failBattlesCount ?? (!isWin ? successCount : 0);
         document.getElementById('statCoins').textContent = `+${totalCoins}`;
         document.getElementById('statGems').textContent = `+${totalGems}`;
         document.getElementById('statRating').textContent = `${totalRatingDelta >= 0 ? '+' : ''}${totalRatingDelta}`;
@@ -722,7 +772,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const rep = parseInt(document.getElementById('ratingRepeat').value) || 1;
     const resType = document.getElementById('ratingResultType').value;
     const mode = document.getElementById('ratingBattleMode').value;
-    executeRatingSimulation(token, rep, resType, mode);
+    const isRanked = document.getElementById('ratingIsRanked')?.value || 'True';
+    executeRatingSimulation(token, rep, resType, mode, isRanked);
   });
   document.getElementById('ratingBtnStop').addEventListener('click', () => {
     ratingAborted = true;
