@@ -884,18 +884,16 @@ async function probeClanSetRole(myUserId, token, targetUserId, targetRole) {
       return;
     }
 
-    const errCode = data.ErrorCode ?? data.error ?? 0;
-    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+    const errCode = data.errorCode ?? data.ErrorCode ?? (data.success === false ? 5 : (data.error ?? 0));
+    const isSuccess = data.success === true || (data.success !== false && errCode === 0);
+    const errText = data.message || CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
-    if (errCode === 0 && (data.Success || data.value)) {
+    if (isSuccess) {
       appendLog('clanConsole', `🔥 [VULNERABILITY CONFIRMED] Server granted ${roleName} to User ${targetId}!`, 'success');
       document.getElementById('clanStatus').textContent = 'ROLE ELEVATED!';
-    } else if (errCode === 5 || resp.status === 401 || resp.status === 403) {
-      appendLog('clanConsole', `🛡️ [SECURE] Permission denied (${errText} / HTTP ${resp.status}). Server verifies admin authorization.`, 'warn');
-      document.getElementById('clanStatus').textContent = 'Blocked (Auth)';
     } else {
-      appendLog('clanConsole', `ℹ️ Server response: ${JSON.stringify(data)}`, 'warn');
-      document.getElementById('clanStatus').textContent = `Code ${errCode}`;
+      appendLog('clanConsole', `🛡️ [BLOCKED BY SERVER] ${errText} (ErrorCode: ${errCode})`, 'warn');
+      document.getElementById('clanStatus').textContent = `Blocked (${errCode})`;
     }
   } catch (err) {
     appendLog('clanConsole', `❌ Network error: ${err.message}`, 'error');
@@ -949,14 +947,15 @@ async function probeClanKick(token, targetUserId, myUserId) {
       return;
     }
 
-    const errCode = data.ErrorCode ?? data.error ?? 0;
-    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+    const errCode = data.errorCode ?? data.ErrorCode ?? (data.success === false ? 5 : (data.error ?? 0));
+    const isSuccess = data.success === true || (data.success !== false && errCode === 0);
+    const errText = data.message || CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
-    if (errCode === 0) {
+    if (isSuccess) {
       appendLog('clanConsole', `🔥 User ${targetUserId} was kicked by server!`, 'success');
       document.getElementById('clanStatus').textContent = 'Kicked';
     } else {
-      appendLog('clanConsole', `🛡️ Kick denied: ${errText} (Code: ${errCode})`, 'warn');
+      appendLog('clanConsole', `🛡️ [BLOCKED BY SERVER] ${errText} (ErrorCode: ${errCode})`, 'warn');
       document.getElementById('clanStatus').textContent = `Blocked (${errCode})`;
     }
   } catch (err) {
@@ -1015,14 +1014,15 @@ async function probeClanUpdate(token, myUserId) {
       return;
     }
 
-    const errCode = data.ErrorCode ?? data.error ?? 0;
-    const errText = CLAN_ERRORS[errCode] || `Error ${errCode}`;
+    const errCode = data.errorCode ?? data.ErrorCode ?? (data.success === false ? 5 : (data.error ?? 0));
+    const isSuccess = data.success === true || (data.success !== false && errCode === 0);
+    const errText = data.message || CLAN_ERRORS[errCode] || `Error ${errCode}`;
 
-    if (errCode === 0) {
+    if (isSuccess) {
       appendLog('clanConsole', '🔥 Clan settings updated on database!', 'success');
       document.getElementById('clanStatus').textContent = 'Updated';
     } else {
-      appendLog('clanConsole', `🛡️ Update denied: ${errText} (Code: ${errCode})`, 'warn');
+      appendLog('clanConsole', `🛡️ [BLOCKED BY SERVER] ${errText} (ErrorCode: ${errCode})`, 'warn');
       document.getElementById('clanStatus').textContent = `Blocked (${errCode})`;
     }
   } catch (err) {
